@@ -38,7 +38,7 @@ SPRITES = Array.new(SETTINGS[:sprites]) { Sprite.new(screen) }
 
 def draw_intro(screen)
 
-  time = ((3000 - SDL::get_ticks - @mark) / 1000.0).round
+  time = ((3000 - (SDL::get_ticks - @mark)) / 1000.0).round
   
   screen.fill_rect 0, 0, SCREEN_W, SCREEN_H, BGCOLOR
   
@@ -49,6 +49,9 @@ def draw_intro(screen)
   
   if time <= 0
     @mark = SDL::get_ticks
+    SPRITES.each{|s| s.init(screen) }
+    @score = 0
+    @misses = 0
     return :game 
   end
 
@@ -59,9 +62,16 @@ end
 def draw_dead(screen)
 
   screen.fill_rect 0, 0, SCREEN_W, SCREEN_H, BGCOLOR
-  str = "You scored #{@score} points!"
+  str = "You scored #{@score} points!  Press A to try again."
   w = FONT.text_size(str)[0]
   FONT.draw_blended_utf8(screen, str, (SCREEN_W - w) / 2, H_SCREEN_H, 255, 255, 255)
+  
+  if @js.button(0)
+    @mark = SDL::get_ticks
+    return :intro 
+  end
+  
+  return :dead
 
 end
 
