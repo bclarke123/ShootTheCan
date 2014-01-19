@@ -3,3 +3,4 @@
 :width: 640
 :height: 480
 :debug: false
+:font: "/usr/share/fonts/truetype/msttcorefonts/arial.ttf"
