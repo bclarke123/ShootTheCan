@@ -6,6 +6,7 @@ require_relative('settings')
 require_relative('util')
 require_relative('joystick')
 require_relative('sprite')
+require_relative('reticle')
 
 SDL.init SDL::INIT_EVERYTHING
 screen = SDL::set_video_mode SCREEN_W, SCREEN_H, 24, SDL::SWSURFACE
@@ -24,7 +25,7 @@ H_SCREEN_H = SCREEN_H / 2;
 SPRITES = Array.new(SETTINGS[:sprites]) { Sprite.new(screen) }
 
 @js = JoystickState.joysticks[0]
-@x = @y = 0
+@ret = Reticle.new(@js, screen)
 
 @score = 0
 @misses = 0
@@ -40,12 +41,16 @@ def draw_intro(screen)
 
   time = ((3000 - (SDL::get_ticks - @mark)) / 1000.0).round
   
+  @ret.tick(screen)
+  
   screen.fill_rect 0, 0, SCREEN_W, SCREEN_H, BGCOLOR
   
   str = "#{time}"
   w = FONT.text_size(str)[0]
 
-  FONT.draw_blended_utf8(screen, "#{time}", (SCREEN_W - w) / 2, H_SCREEN_H, 255, 255, 255)
+  FONT.draw_blended_utf8(screen, str, (SCREEN_W - w) / 2, H_SCREEN_H, 255, 255, 255)
+  
+  @ret.draw(screen)
   
   if time <= 0
     @mark = SDL::get_ticks
@@ -61,10 +66,16 @@ end
 
 def draw_dead(screen)
 
+  @ret.tick(screen)
+
   screen.fill_rect 0, 0, SCREEN_W, SCREEN_H, BGCOLOR
+  
   str = "You scored #{@score} points!  Press A to try again."
   w = FONT.text_size(str)[0]
+  
   FONT.draw_blended_utf8(screen, str, (SCREEN_W - w) / 2, H_SCREEN_H, 255, 255, 255)
+  
+  @ret.draw(screen)
   
   if @js.button(0)
     @mark = SDL::get_ticks
@@ -79,12 +90,11 @@ def draw_game(screen)
 
   @timer = 60000 - (SDL::get_ticks - @mark)
   
+  @ret.tick(screen)
+  
   if @timer <= 0
     return :dead
   end
-
-  @x = H_SCREEN_W + ((@js.axis(0) / 32768.0) * H_SCREEN_W)
-  @y = H_SCREEN_H + ((@js.axis(1) / 32768.0) * H_SCREEN_H)
   
   if @canshoot && @js.axis(5) > 0 && !@shooting && @ticks - @shotstart > 100
     @shotstart = @ticks
@@ -99,7 +109,7 @@ def draw_game(screen)
   SPRITES.each do |s| 
     s.tick(screen)
     
-    if @shooting && s.hit?(@x, @y)
+    if @shooting && s.hit?(@ret.x, @ret.y)
       @score += s.points
       debug "Hit: #{@score}"
       s.die
@@ -118,8 +128,8 @@ def draw_game(screen)
   else
     screen.fill_rect 0, 0, SCREEN_W, SCREEN_H, BGCOLOR
   end
-  screen.draw_line @x, 0, @x, SCREEN_H, LINECOLOR
-  screen.draw_line 0, @y, SCREEN_W, @y, LINECOLOR
+  
+  @ret.draw(screen)
   
   FONT.draw_blended_utf8(screen, "Score: #{@score}", 5, 5, 255, 255, 255)
   FONT.draw_blended_utf8(screen, 
